@@ -1,15 +1,25 @@
+"use client";
 import { useState, useEffect } from "react";
 import { initialQuestions } from "../consts/questions";
+import { shuffleArray } from "@/utils/shuffle";
 
 export default function GeneratePage() {
-  const [questions, setQuestions] = useState<string[]>(initialQuestions);
-
+  const [questions, setQuestions] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [liked, setLiked] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const currentQuestion = questions[currentIndex] || "No more questions.";
+  // 🔀 Shuffle only once on client
+  useEffect(() => {
+    const shuffled = shuffleArray(initialQuestions);
+    setQuestions(shuffled);
+  }, []);
+
+  const currentQuestion =
+    questions && currentIndex < questions.length
+      ? questions[currentIndex]
+      : "No more questions.";
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -19,15 +29,12 @@ export default function GeneratePage() {
       const response = await fetch("/api/generate-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          examples: liked,
-        }),
+        body: JSON.stringify({ examples: liked }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Replace the current question with the new one
         const updated = [...questions];
         updated[currentIndex] = data.question;
         setQuestions(updated);
@@ -42,12 +49,12 @@ export default function GeneratePage() {
     setLoading(false);
   };
 
-  // 🔍 Monitor liked array size and cap at 5
   useEffect(() => {
     if (liked.length > 5) {
-      setLiked((prev) => prev.slice(1)); // Remove the first item
+      setLiked((prev) => prev.slice(1));
     }
   }, [liked]);
+
   const handleSkip = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
